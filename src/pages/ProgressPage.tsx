@@ -52,7 +52,7 @@ export function ProgressPage() {
             const day = getDay(d)
             const ok = day.voids.length > 0
             return (
-              <div className="timeline-item" key={d}>
+              <Link className="timeline-item" key={d} to={d === todayKey() ? '/' : `/day/${d}`}>
                 <div className="meta">
                   <strong>{formatDisplayDate(d)}</strong>
                   <span className="tag">
@@ -61,9 +61,9 @@ export function ProgressPage() {
                   </span>
                 </div>
                 <span className={`badge ${ok ? 'badge-ok' : 'badge-muted'}`}>
-                  {ok ? '已记' : '待记'}
+                  {ok ? '已记' : '去填'}
                 </span>
-              </div>
+              </Link>
             )
           })}
         </div>

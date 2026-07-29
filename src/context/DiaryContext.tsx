@@ -35,6 +35,8 @@ type DiaryContextValue = {
   getNight: (date: string) => NightRecord
   addIntake: (date: string, entry: Omit<IntakeEntry, 'id'>) => void
   addVoid: (date: string, entry: Omit<VoidEntry, 'id'>) => void
+  updateIntake: (date: string, id: string, entry: Omit<IntakeEntry, 'id'>) => void
+  updateVoid: (date: string, id: string, entry: Omit<VoidEntry, 'id'>) => void
   removeIntake: (date: string, id: string) => void
   removeVoid: (date: string, id: string) => void
   saveNight: (night: NightRecord) => void
@@ -136,6 +138,30 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
     [patchDay],
   )
 
+  const updateIntake = useCallback(
+    (date: string, id: string, entry: Omit<IntakeEntry, 'id'>) => {
+      patchDay(date, (d) => ({
+        ...d,
+        intakes: d.intakes
+          .map((x) => (x.id === id ? { ...x, ...entry } : x))
+          .sort((a, b) => a.time.localeCompare(b.time)),
+      }))
+    },
+    [patchDay],
+  )
+
+  const updateVoid = useCallback(
+    (date: string, id: string, entry: Omit<VoidEntry, 'id'>) => {
+      patchDay(date, (d) => ({
+        ...d,
+        voids: d.voids
+          .map((x) => (x.id === id ? { ...x, ...entry } : x))
+          .sort((a, b) => a.time.localeCompare(b.time)),
+      }))
+    },
+    [patchDay],
+  )
+
   const removeIntake = useCallback(
     (date: string, id: string) => {
       patchDay(date, (d) => ({
@@ -214,6 +240,8 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
       getNight,
       addIntake,
       addVoid,
+      updateIntake,
+      updateVoid,
       removeIntake,
       removeVoid,
       saveNight,
@@ -231,6 +259,8 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
       getNight,
       addIntake,
       addVoid,
+      updateIntake,
+      updateVoid,
       removeIntake,
       removeVoid,
       saveNight,

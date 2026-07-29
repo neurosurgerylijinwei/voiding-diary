@@ -3,19 +3,28 @@ import { nowTime } from '../lib/dates'
 
 const VOLUME_PRESETS = [50, 100, 150, 200, 250, 300]
 
+type Initial = {
+  time?: string
+  volumeMl?: number
+  leak?: boolean
+}
+
 type Props = {
   title: string
   hint: string
   mode: 'intake' | 'void'
+  initial?: Initial
   onClose: () => void
   onSave: (data: { time: string; volumeMl: number; leak?: boolean }) => void
 }
 
-export function QuickLogModal({ title, hint, mode, onClose, onSave }: Props) {
-  const [time, setTime] = useState(nowTime)
-  const [volume, setVolume] = useState(100)
-  const [custom, setCustom] = useState('')
-  const [leak, setLeak] = useState(false)
+export function QuickLogModal({ title, hint, mode, initial, onClose, onSave }: Props) {
+  const initialVolume = initial?.volumeMl ?? 100
+  const presetMatch = VOLUME_PRESETS.includes(initialVolume)
+  const [time, setTime] = useState(initial?.time ?? nowTime())
+  const [volume, setVolume] = useState(presetMatch ? initialVolume : 100)
+  const [custom, setCustom] = useState(presetMatch || initial?.volumeMl == null ? '' : String(initialVolume))
+  const [leak, setLeak] = useState(initial?.leak ?? false)
 
   const volumeMl = useMemo(() => {
     const n = Number(custom)

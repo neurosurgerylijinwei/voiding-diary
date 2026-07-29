@@ -18,13 +18,16 @@ npm install
 npm run dev
 ```
 
-## 构建
+本地打开：http://127.0.0.1:5173/voiding-diary/
 
-```bash
-npm run build
-npm run preview
-```
+## 构建与上线
 
-数据默认保存在浏览器 localStorage。GitHub 备份请在「设置」中配置私有仓库与 Token。
+代码仓库：https://github.com/neurosurgerylijinwei/voiding-diary
+
+推送到 `main` 后，GitHub Actions 会自动构建并部署到 GitHub Pages：
+
+https://neurosurgerylijinwei.github.io/voiding-diary/
+
+首次需在仓库 Settings → Pages 中选择 **GitHub Actions** 作为源。
 
 > 仅供记录与就诊参考，不能代替医生诊断。

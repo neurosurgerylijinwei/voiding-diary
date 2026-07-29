@@ -1,18 +1,35 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { BandBadge } from '../components/BandBadge'
 import { QuickLogModal } from '../components/QuickLogModal'
 import { useDiary } from '../context/DiaryContext'
-import { formatDisplayDate, todayKey } from '../lib/dates'
+import { addDays, formatDisplayDate, todayKey } from '../lib/dates'
 import { calcEbc } from '../lib/ebc'
 import { interpretDay, interpretNight } from '../lib/interpret'
 
+type EditState =
+  | { mode: 'intake' | 'void'; id?: string }
+  | null
+
 export function HomePage() {
-  const { profile, getDay, getNight, addIntake, addVoid, removeIntake, removeVoid } = useDiary()
-  const date = todayKey()
+  const { date: dateParam } = useParams()
+  const navigate = useNavigate()
+  const date = dateParam || todayKey()
+  const isToday = date === todayKey()
+  const {
+    profile,
+    getDay,
+    getNight,
+    addIntake,
+    addVoid,
+    updateIntake,
+    updateVoid,
+    removeIntake,
+    removeVoid,
+  } = useDiary()
   const day = getDay(date)
   const night = getNight(date)
-  const [modal, setModal] = useState<'intake' | 'void' | null>(null)
+  const [edit, setEdit] = useState<EditState>(null)
 
   const dayInterp = useMemo(
     () => (profile ? interpretDay(day, profile.ageYears) : null),
@@ -28,12 +45,16 @@ export function HomePage() {
       ...day.intakes.map((x) => ({
         id: x.id,
         time: x.time,
+        volumeMl: x.volumeMl,
+        leak: false as boolean | undefined,
         kind: 'intake' as const,
         label: `饮水 ${x.volumeMl} ml`,
       })),
       ...day.voids.map((x) => ({
         id: x.id,
         time: x.time,
+        volumeMl: x.volumeMl,
+        leak: x.leak,
         kind: 'void' as const,
         label: `排尿 ${x.volumeMl} ml${x.leak ? ' · 有漏尿' : ''}`,
       })),
@@ -44,6 +65,9 @@ export function HomePage() {
   if (!profile) return null
 
   const ebc = calcEbc(profile.ageYears)
+  const editingItem = edit?.id
+    ? timeline.find((x) => x.id === edit.id && x.kind === edit.mode)
+    : undefined
 
   return (
     <div>
@@ -55,43 +79,83 @@ export function HomePage() {
       <section className="card">
         <h2>
           {profile.childName} · {formatDisplayDate(date)}
+          {!isToday && <span className="badge badge-muted" style={{ marginLeft: 8 }}>补记</span>}
         </h2>
         <p className="hint">
           年龄 {profile.ageYears} 岁，估算膀胱容量 <strong>{ebc} ml</strong>。
-          请尽量完整记录今天的饮水与排尿；晚上睡前打开「夜间卡」。
+          {isToday
+            ? '请尽量完整记录今天的饮水与排尿；晚上睡前打开「夜间卡」。'
+            : '这是历史日期，可在这里补记或修改当天记录。'}
         </p>
+        <div className="row no-print" style={{ marginBottom: 12 }}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => navigate(`/day/${addDays(date, -1)}`)}
+          >
+            前一天
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => navigate(isToday ? '/' : `/day/${todayKey()}`)}
+          >
+            今天
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => navigate(`/day/${addDays(date, 1)}`)}
+            disabled={date >= todayKey()}
+          >
+            后一天
+          </button>
+        </div>
         <div className="big-actions no-print">
-          <button type="button" className="btn btn-primary" onClick={() => setModal('void')}>
+          <button type="button" className="btn btn-primary" onClick={() => setEdit({ mode: 'void' })}>
             记排尿
             <small>时间 · 尿量 · 漏尿</small>
           </button>
-          <button type="button" className="btn btn-dawn" onClick={() => setModal('intake')}>
+          <button type="button" className="btn btn-dawn" onClick={() => setEdit({ mode: 'intake' })}>
             记喝水
             <small>水 / 奶 / 汤都算</small>
           </button>
         </div>
         <div className="row" style={{ marginTop: 12 }}>
           <Link className="btn btn-secondary btn-block" to={`/night/${date}`}>
-            填写今晚夜间卡
+            {isToday ? '填写今晚夜间卡' : '填写该晚夜间卡'}
           </Link>
         </div>
       </section>
 
       <section className="card">
-        <h3>今日时间线</h3>
-        <p className="hint">从起床记到睡觉。漏记了也可以补上时间。</p>
+        <h3>{isToday ? '今日时间线' : '当天时间线'}</h3>
+        <p className="hint">从起床记到睡觉。点一条可以修改；漏记了也可以补上时间。</p>
         {timeline.length === 0 ? (
           <p className="hint">还没有记录。先点上面的大按钮试一条吧。</p>
         ) : (
           <div className="timeline">
             {timeline.map((item) => (
               <div className="timeline-item" key={`${item.kind}-${item.id}`}>
-                <div className="meta">
+                <button
+                  type="button"
+                  className="meta"
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    padding: 0,
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    color: 'inherit',
+                    flex: 1,
+                  }}
+                  onClick={() => setEdit({ mode: item.kind, id: item.id })}
+                >
                   <strong>
                     {item.time} · {item.label}
                   </strong>
-                  <span className="tag">{item.kind === 'intake' ? '饮水' : '排尿'}</span>
-                </div>
+                  <span className="tag">{item.kind === 'intake' ? '饮水 · 点此编辑' : '排尿 · 点此编辑'}</span>
+                </button>
                 <button
                   type="button"
                   className="btn btn-ghost"
@@ -112,7 +176,7 @@ export function HomePage() {
       {dayInterp && (
         <section className="card">
           <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3>今日日间解读</h3>
+            <h3>日间解读</h3>
             <BandBadge band={dayInterp.band} />
           </div>
           <p className="hint">{dayInterp.plain}</p>
@@ -127,7 +191,7 @@ export function HomePage() {
       {nightInterp && (night.wetDiaperG != null || night.morningVoidMl != null || night.bedwet) && (
         <section className="card">
           <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3>昨夜简读</h3>
+            <h3>夜间简读</h3>
             <BandBadge band={nightInterp.band} />
           </div>
           <p className="hint">{nightInterp.plain}</p>
@@ -144,19 +208,42 @@ export function HomePage() {
         </Link>
       </section>
 
-      {modal && (
+      {edit && (
         <QuickLogModal
-          mode={modal}
-          title={modal === 'intake' ? '记喝水' : '记排尿'}
+          mode={edit.mode}
+          title={
+            edit.id
+              ? edit.mode === 'intake'
+                ? '编辑喝水'
+                : '编辑排尿'
+              : edit.mode === 'intake'
+                ? '记喝水'
+                : '记排尿'
+          }
           hint={
-            modal === 'intake'
+            edit.mode === 'intake'
               ? '水、奶、汤、果汁都算。尽量写清时间与大约毫升数。'
               : '用量杯最准。没有量杯时，可用常用杯子粗估，并尽量每次方式一致。'
           }
-          onClose={() => setModal(null)}
+          initial={
+            editingItem
+              ? {
+                  time: editingItem.time,
+                  volumeMl: editingItem.volumeMl,
+                  leak: editingItem.leak,
+                }
+              : undefined
+          }
+          onClose={() => setEdit(null)}
           onSave={({ time, volumeMl, leak }) => {
-            if (modal === 'intake') addIntake(date, { time, volumeMl })
-            else addVoid(date, { time, volumeMl, leak: !!leak })
+            if (edit.mode === 'intake') {
+              if (edit.id) updateIntake(date, edit.id, { time, volumeMl })
+              else addIntake(date, { time, volumeMl })
+            } else if (edit.id) {
+              updateVoid(date, edit.id, { time, volumeMl, leak: !!leak })
+            } else {
+              addVoid(date, { time, volumeMl, leak: !!leak })
+            }
           }}
         />
       )}

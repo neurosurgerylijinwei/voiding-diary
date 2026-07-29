@@ -28,6 +28,7 @@ export default function App() {
         }
       >
         <Route path="/" element={<HomePage />} />
+        <Route path="/day/:date" element={<HomePage />} />
         <Route path="/progress" element={<ProgressPage />} />
         <Route path="/summary" element={<SummaryPage />} />
         <Route path="/settings" element={<SettingsPage />} />
